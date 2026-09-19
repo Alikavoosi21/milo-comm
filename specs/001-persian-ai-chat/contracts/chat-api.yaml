@@ -1,0 +1,48 @@
+openapi: 3.1.0
+info:
+  title: MILO COMM Chat API
+  version: 1.0.0
+paths:
+  /api/conversations:
+    get:
+      summary: فهرست گفتگوهای متعلق به کاربر جاری
+      responses:
+        '200': { description: گفتگوها به ترتیب آخرین فعالیت }
+    post:
+      summary: ایجاد گفتگوی جدید
+      responses:
+        '201': { description: گفتگوی خالی ایجاد شد }
+  /api/attachments:
+    post:
+      summary: اعتبارسنجی، بارگذاری و استخراج امن فایل
+      requestBody: { required: true }
+      responses:
+        '201': { description: پیوست آماده یا در حال استخراج }
+        '422': { description: فایل رد شد؛ علت و نوع‌های مجاز بازگردانده می‌شود }
+  /api/conversations/{conversationId}/messages:
+    post:
+      summary: ارسال پیام و دریافت جریان رویدادهای پاسخ
+      parameters:
+        - { name: conversationId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: text/event-stream با accepted، file_reading، context_ready، generating، text_delta و terminal event }
+        '409': { description: generation فعال یا کلید idempotency تکراری }
+        '422': { description: ورودی، فایل یا ارجاع نامعتبر }
+  /api/messages/{messageId}/fork:
+    post:
+      summary: ایجاد شاخهٔ تازه از پیام ویرایش‌شدهٔ کاربر
+      parameters:
+        - { name: messageId, in: path, required: true, schema: { type: string } }
+      responses:
+        '201': { description: شاخه و پیام ویرایش‌شده ایجاد شد }
+        '409': { description: generation فعال باید نخست لغو شود }
+components:
+  schemas:
+    MessageInput:
+      type: object
+      required: [content, idempotencyKey]
+      properties:
+        content: { type: string, minLength: 1 }
+        attachmentIds: { type: array, items: { type: string }, maxItems: 3 }
+        referenceConversationIds: { type: array, items: { type: string } }
+        idempotencyKey: { type: string }

@@ -1,0 +1,187 @@
+openapi: 3.1.0
+info:
+  title: MILO COMM Conversation Management API
+  version: 0.2.0
+  description: قرارداد feature 002 برای تغییر نام، قواعد و حذف دائمی گفتگو
+paths:
+  /api/conversations/{conversationId}:
+    parameters:
+      - $ref: '#/components/parameters/ConversationId'
+    get:
+      summary: دریافت جزئیات گفتگوی متعلق به کاربر
+      responses:
+        '200':
+          description: گفتگو
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      summary: تغییر نام یا قواعد گفتگو
+      description: حداقل یکی از title یا instructions لازم است و mutation فقط با revision فعلی انجام می‌شود.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversationPatch'
+            examples:
+              rename:
+                value:
+                  title: برنامه‌ریزی درس
+                  expectedRevision: 3
+              instructions:
+                value:
+                  instructions: پاسخ‌ها کوتاه، رسمی و فارسی باشند.
+                  expectedRevision: 4
+              clearInstructions:
+                value:
+                  instructions: ''
+                  expectedRevision: 5
+      responses:
+        '200':
+          description: metadata ذخیره‌شده
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [conversation]
+                properties:
+                  conversation:
+                    $ref: '#/components/schemas/ConversationMetadata'
+        '409':
+          description: revision تغییر کرده یا گفتگو در حال حذف است
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: حذف دائمی گفتگوی متعلق به کاربر
+      description: تأیید انسانی در UI انجام می‌شود؛ سرور stream فعال را لغو و graph وابسته را پاک می‌کند.
+      responses:
+        '204':
+          description: حذف تکمیل شد
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: حذف آغاز شده ولی هنوز تکمیل نشده است
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: milo_owner
+  parameters:
+    ConversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    ConversationPatch:
+      type: object
+      additionalProperties: false
+      required: [expectedRevision]
+      anyOf:
+        - required: [title]
+        - required: [instructions]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: سرور پیش از validation فاصله ابتدا و انتها را حذف می‌کند.
+        instructions:
+          type: string
+          maxLength: 4000
+          description: رشته خالی قواعد را پاک می‌کند.
+        expectedRevision:
+          type: integer
+          minimum: 1
+    ConversationMetadata:
+      type: object
+      required: [id, title, instructions, revision, updatedAt, lastActivityAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        instructions:
+          type: string
+        revision:
+          type: integer
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
+        lastActivityAt:
+          type: string
+          format: date-time
+    ConversationDetail:
+      allOf:
+        - $ref: '#/components/schemas/ConversationMetadata'
+        - type: object
+          required: [ownerId, activeBranchId, createdAt, branches, messages]
+          properties:
+            ownerId:
+              type: string
+              format: uuid
+            activeBranchId:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+            branches:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            messages:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    ConflictError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            current:
+              $ref: '#/components/schemas/ConversationMetadata'
+  responses:
+    NotFound:
+      description: گفتگو پیدا نشد؛ همین پاسخ برای منبع متعلق به دیگری استفاده می‌شود.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: گفتگو پیدا نشد
+    ValidationError:
+      description: payload معتبر نیست
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+security:
+  - sessionCookie: []
