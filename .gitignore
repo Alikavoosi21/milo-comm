@@ -17,6 +17,7 @@ storage/
 # Secrets and local environment configuration
 .env
 .env.*
+!.env.example
 
 # Editor and operating-system files
 .vscode/
