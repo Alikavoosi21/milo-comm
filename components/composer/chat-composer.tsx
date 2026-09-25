@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AttachmentPicker } from "./attachment-picker";
-import { AttachmentList } from "./attachment-list";
+import { SourcePicker } from "./source-picker";
 import { ConversationReferencePicker } from "./conversation-reference-picker";
 
 interface ChatComposerProps {
@@ -14,24 +13,19 @@ interface ChatComposerProps {
 
 export function ChatComposer({ conversationId, busy, onSend, onCancel }: ChatComposerProps) {
   const [text, setText] = useState("");
-  const [attachments, setAttachments] = useState<{ id: string; originalName: string }[]>([]);
   const [references, setReferences] = useState<string[]>([]);
-  const [error, setError] = useState("");
 
   async function submit() {
     const value = text.trim();
     if (!value || busy) return;
-    const ok = await onSend(value, attachments.map((item) => item.id), references);
+    const ok = await onSend(value, [], references);
     if (ok) {
       setText("");
-      setAttachments([]);
       setReferences([]);
-      setError("");
     }
   }
 
   return <div className="composer-wrap">
-    <AttachmentList items={attachments} error={error} onRemove={(id) => setAttachments((items) => items.filter((item) => item.id !== id))} />
     {!!references.length && <div className="reference-badges">{references.map((id) =>
       <span key={id}>＠ گفتگوی انتخاب‌شده <button onClick={() => setReferences(references.filter((item) => item !== id))}>×</button></span>)}</div>}
     <div className="composer-box">
@@ -49,7 +43,7 @@ export function ChatComposer({ conversationId, busy, onSend, onCancel }: ChatCom
       />
       <div className="composer-actions">
         <div className="composer-tools">
-          <AttachmentPicker disabled={busy} onUploaded={(item) => { setAttachments((items) => [...items, item]); setError(""); }} onError={setError} />
+          <SourcePicker />
           <ConversationReferencePicker currentId={conversationId} selected={references} onChange={setReferences} />
         </div>
         {busy
@@ -57,6 +51,6 @@ export function ChatComposer({ conversationId, busy, onSend, onCancel }: ChatCom
           : <button className="send-button" onClick={submit} disabled={!text.trim()} aria-label="ارسال پیام">↑</button>}
       </div>
     </div>
-    <small className="composer-note">مایلو ممکن است اشتباه کند؛ اطلاعات مهم را بررسی کنید.</small>
+    <small className="composer-note">پاسخ‌ها با سیاست انتخاب‌شده در پنل مدیریت ساخته می‌شوند.</small>
   </div>;
 }

@@ -5,7 +5,7 @@ test("editing a user message creates and switches between isolated branches", as
   await page.getByRole("button", { name: /شروع گفتگوی جدید/ }).click();
   await page.getByLabel("متن پیام").fill("نسخه قدیمی");
   await page.getByLabel("ارسال پیام").click();
-  await expect(page.locator(".message.assistant")).toContainText("نسخه قدیمی", { timeout: 15_000 });
+  await expect(page.locator(".message.assistant")).toContainText("متاسفانه خواسته شما در منابع تعیین شده وجود ندارد", { timeout: 15_000 });
   await expect(page.getByLabel("ارسال پیام")).toBeVisible();
 
   await page.getByRole("button", { name: "ویرایش" }).click();
@@ -18,10 +18,11 @@ test("editing a user message creates and switches between isolated branches", as
   await switcher.selectOption({ label: "مسیر اصلی" });
   await expect(page.locator(".message.user").getByText("نسخه قدیمی", { exact: true })).toBeVisible();
   await expect(page.locator(".message.user").getByText("نسخه جدید", { exact: true })).not.toBeVisible();
-  await expect(page.locator(".message.assistant")).toContainText("نسخه قدیمی");
+  await expect(page.locator(".message.assistant")).toContainText("متاسفانه خواسته شما در منابع تعیین شده وجود ندارد");
 
   await switcher.selectOption({ label: "مسیر 2" });
   await expect(page.locator(".message.user").getByText("نسخه جدید", { exact: true })).toBeVisible();
   await expect(page.locator(".message.user").getByText("نسخه قدیمی", { exact: true })).not.toBeVisible();
 });
+
 

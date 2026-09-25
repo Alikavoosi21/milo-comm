@@ -43,10 +43,12 @@ export async function validateFile(file: File, bytes: Uint8Array) {
   }
 
   if (extension === "pdf") {
-    const marker = new TextDecoder("latin1").decode(bytes);
-    if (!marker.startsWith("%PDF-") || !marker.includes("%%EOF")) {
-      return rejection("ساختار PDF خراب یا ناقص است.");
+    if (bytes.length < 100) return rejection("ساختار PDF معتبر نیست.");
+    const header = new TextDecoder("latin1").decode(bytes.subarray(0, 1024));
+    if (!/%PDF-\d\.\d/.test(header)) {
+      return rejection("ساختار PDF معتبر نیست.");
     }
+    const marker = new TextDecoder("latin1").decode(bytes);
     if (/\/Encrypt\b/.test(marker)) {
       return rejection("PDF رمزگذاری‌شده پذیرفته نمی‌شود.");
     }
@@ -65,3 +67,4 @@ export async function validateFile(file: File, bytes: Uint8Array) {
 
   return { ok: true as const, extension, detectedMime };
 }
+

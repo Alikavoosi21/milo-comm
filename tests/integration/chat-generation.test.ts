@@ -25,7 +25,7 @@ function request(conversationId: string, key: string, signal?: AbortSignal) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      content: "سلام",
+      content: "این منبع چه می‌گوید؟",
       attachmentIds: [],
       referenceConversationIds: [],
       idempotencyKey: key,
@@ -63,12 +63,12 @@ describe("chat generation integration", () => {
     expect(foreign.status).toBe(404);
   });
 
-  it("persists safe provider failure and cancellation states", async () => {
+  it("returns the exact no-source answer without invoking the provider and preserves cancellation", async () => {
     const failedConversation = createConversation("owner");
     modelState.fail = true;
     const failed = await request(failedConversation.id, "failed-key");
-    expect(await failed.text()).toContain("event: failed");
-    expect(failedConversation.messages.at(-1)?.status).toBe("failed");
+    expect(await failed.text()).toContain("متاسفانه خواسته شما در منابع تعیین شده وجود ندارد، لطفا منبع مناسب این سوال رو وارد کنید");
+    expect(failedConversation.messages.at(-1)?.status).toBe("completed");
 
     modelState.fail = false;
     const cancelledConversation = createConversation("owner");
@@ -80,3 +80,4 @@ describe("chat generation integration", () => {
     expect(cancelledConversation.messages.at(-1)?.status).toBe("cancelled");
   });
 });
+

@@ -183,7 +183,7 @@ export function ChatScreen({ conversationId }: { conversationId: string }) {
 
   return <main className="chat-main">
     <header className="chat-header">
-      <div className="chat-title"><h1>{conversation?.title ?? "گفتگو"}</h1><small>مدل فارسی مایلو</small></div>
+      <div className="chat-title"><h1>{conversation?.title ?? "گفتگو"}</h1><small>پاسخ‌ها فقط از منابع مدیریت‌شده ساخته می‌شوند</small></div>
       <div className="chat-header-controls">
         <BranchSwitcher branches={conversation?.branches ?? []} activeId={conversation?.activeBranchId} onSelect={selectBranch} />
         {conversation && <ConversationInstructionsDialog conversation={conversation} onUpdated={applyMetadata} />}
@@ -207,3 +207,4 @@ export function ChatScreen({ conversationId }: { conversationId: string }) {
     <ChatComposer conversationId={conversationId} busy={busy} onCancel={() => controllerRef.current?.abort()} onSend={send} />
   </main>;
 }
+

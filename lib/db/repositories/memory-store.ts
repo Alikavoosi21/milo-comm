@@ -22,7 +22,7 @@ export type ConversationPatchResult =
   | { status: "conflict"; conversation: Conversation }
   | { status: "not_found" };
 
-const dataFile = path.join(process.cwd(), ".data", "store.json");
+const dataFile = path.resolve(process.cwd(), process.env.MILO_DATA_DIR ?? ".data", "store.json");
 const isTest = process.env.NODE_ENV === "test" || Boolean(process.env.VITEST);
 
 function normalizeConversation(value: Conversation): Conversation {
@@ -35,6 +35,8 @@ function normalizeConversation(value: Conversation): Conversation {
     lifecycleState: value.lifecycleState === "deleting" ? "deleting" : "active",
     branches: value.branches ?? [],
     messages: value.messages ?? [],
+    summary: typeof value.summary === "string" ? value.summary : "",
+    summarizedThroughMessageId: typeof value.summarizedThroughMessageId === "string" ? value.summarizedThroughMessageId : undefined,
   };
 }
 
@@ -173,3 +175,4 @@ export function resetStore() {
   store.idempotency.clear();
   store.themes.clear();
 }
+

@@ -1,10 +1,10 @@
 import mammoth from "mammoth";
 import Papa from "papaparse";
-import { PDFParse } from "pdf-parse";
+import { PdfDocumentLoader } from "./pdf-loader";
 
 const MAX_EXTRACTED_CHARS = 50_000;
 
-export async function extractText(bytes: Uint8Array, extension: string) {
+export async function extractText(bytes: Uint8Array, extension: string, maxChars = MAX_EXTRACTED_CHARS) {
   let text = "";
   if (extension === "txt" || extension === "md") {
     text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
@@ -16,12 +16,13 @@ export async function extractText(bytes: Uint8Array, extension: string) {
     const result = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
     text = result.value;
   } else if (extension === "pdf") {
-    const parser = new PDFParse({ data: bytes });
-    try { text = (await parser.getText({ first: 50 })).text; } finally { await parser.destroy(); }
+    text = (await new PdfDocumentLoader(bytes).load()).map((page) => page.pageContent).join("\n\n");
   } else {
     throw new Error("نوع فایل پشتیبانی نمی‌شود");
   }
   const normalized = text.replace(/\0/g, "").trim();
   if (!normalized) throw new Error("متنی از فایل قابل استخراج نبود");
-  return { text: normalized.slice(0, MAX_EXTRACTED_CHARS), truncated: normalized.length > MAX_EXTRACTED_CHARS };
+  return { text: normalized.slice(0, maxChars), truncated: normalized.length > maxChars };
 }
+
+

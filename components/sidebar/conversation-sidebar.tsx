@@ -43,8 +43,10 @@ export function ConversationSidebar() {
     </nav>
     <div className="sidebar-footer">
       <ThemeToggle />
+      <Link className="settings-link" href="/admin" aria-label="مدیریت منابع"><span aria-hidden="true">◫</span><span>مدیریت</span></Link>
       <Link className="settings-link" href="/settings" aria-label="تنظیمات"><span aria-hidden="true">⚙</span><span>تنظیمات</span></Link>
       <div className="user-summary"><strong>کاربر مایلو</strong><small>فضای شخصی</small></div>
     </div>
   </aside>;
 }
+

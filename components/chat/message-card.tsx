@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { MessageEditor } from "./message-editor";
+import { SourceCitations } from "./source-citations";
 
 export function MessageCard({ message, onEdit }: { message: ChatMessage; onEdit?(value: string): Promise<void> }) {
   const [editing, setEditing] = useState(false);
@@ -18,6 +19,7 @@ export function MessageCard({ message, onEdit }: { message: ChatMessage; onEdit?
     <div className="message-body">
       <strong>{message.role === "user" ? "شما" : "مایلو"}</strong>
       <p>{message.content || "…"}</p>
+      {message.role === "assistant" && !!message.citations?.length && <SourceCitations items={message.citations} />}
       {message.role === "user" && !!(message.attachmentIds.length || message.referenceConversationIds.length) &&
         <div className="reference-badges" aria-label="منابع این پیام">
           {message.attachmentIds.map((id) => <span key={id}>📄 فایل پیوست‌شده</span>)}
@@ -27,3 +29,4 @@ export function MessageCard({ message, onEdit }: { message: ChatMessage; onEdit?
     </div>
   </article>;
 }
+

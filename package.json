@@ -10,9 +10,15 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:migrate": "node --env-file=.env --import tsx lib/db/migrate.ts"
   },
   "dependencies": {
+    "@langchain/cohere": "^1.1.0",
+    "@langchain/core": "^1.2.12",
+    "@langchain/openai": "^1.5.13",
+    "@langchain/pgvector": "^0.1.0",
+    "@langchain/textsplitters": "^1.0.1",
     "drizzle-orm": "latest",
     "file-type": "latest",
     "mammoth": "latest",
@@ -39,6 +45,7 @@
     "postcss": "latest",
     "prettier": "latest",
     "tailwindcss": "latest",
+    "tsx": "^4.23.15",
     "typescript": "latest",
     "vitest": "latest"
   },

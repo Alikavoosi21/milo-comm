@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const messageInputSchema = z.object({
   content: z.string().trim().min(1, "پیام نمی‌تواند خالی باشد").max(20_000),
-  attachmentIds: z.array(z.string().uuid()).max(3).default([]),
+  attachmentIds: z.array(z.string().uuid()).max(0, "پیوست فایل در چت غیرفعال است.").default([]),
   referenceConversationIds: z.array(z.string().uuid()).max(5).default([]),
   idempotencyKey: z.string().min(8).max(100),
 });

@@ -1,4 +1,4 @@
-import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { env } from "@/lib/validation/env";
@@ -21,4 +21,8 @@ export async function deletePrivateFile(storageKey: string) {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
+}
+
+export async function readPrivateFile(storageKey: string) {
+  return new Uint8Array(await readFile(privatePath(storageKey)));
 }

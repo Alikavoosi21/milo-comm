@@ -1,0 +1,289 @@
+openapi: 3.1.0
+info:
+  title: Grounded RAG Chatbot API
+  version: 1.0.0
+  description: Admin knowledge-source and usage APIs; grounded chat extends the existing conversation message endpoint.
+servers:
+  - url: /
+paths:
+  /api/admin/session:
+    post:
+      summary: Create admin session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  minLength: 1
+                  writeOnly: true
+      responses:
+        "204":
+          description: Session cookie set; HttpOnly and SameSite=Lax
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Login rate limit reached
+    delete:
+      summary: End current admin session
+      responses:
+        "204":
+          description: Session cookie cleared
+  /api/admin/sources:
+    get:
+      summary: List shared knowledge sources
+      security:
+        - adminSession: []
+      responses:
+        "200":
+          description: Up to three sources and their readiness states
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sources, limit]
+                properties:
+                  limit:
+                    type: integer
+                    const: 3
+                  sources:
+                    type: array
+                    maxItems: 3
+                    items:
+                      $ref: "#/components/schemas/KnowledgeSource"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      summary: Upload and index a knowledge source
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF, DOCX, TXT, MD or CSV; max 10 MB
+      responses:
+        "202":
+          description: Source accepted for indexing; active only after successful indexing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeSource"
+        "400":
+          description: Unsupported, unreadable or oversized file
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Three source slots are occupied
+        "422":
+          description: Text extraction or indexing failed; active previous version is preserved
+  /api/admin/sources/{sourceId}:
+    parameters:
+      - $ref: "#/components/parameters/sourceId"
+    put:
+      summary: Replace a source while keeping its active version until indexing succeeds
+      security:
+        - adminSession: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "202":
+          description: Replacement accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeSource"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Source not found
+        "422":
+          description: Replacement failed; prior active version remains
+    delete:
+      summary: Delete a source and its vectors
+      security:
+        - adminSession: []
+      responses:
+        "204":
+          description: Source deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Source not found
+  /api/admin/usage:
+    get:
+      summary: Read privacy-safe model usage and estimated cost
+      security:
+        - adminSession: []
+      parameters:
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: operation
+          schema:
+            type: string
+            enum: [answer, summarize, embed, rerank]
+      responses:
+        "200":
+          description: Usage totals and records without prompt or response content
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, totals]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UsageEvent"
+                  totals:
+                    type: object
+                    properties:
+                      inputTokens:
+                        type: integer
+                      outputTokens:
+                        type: integer
+                      cost:
+                        type: number
+                        nullable: true
+                      currency:
+                        type: string
+                        nullable: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/conversations/{conversationId}/messages:
+    parameters:
+      - in: path
+        name: conversationId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Send user message; answer only from active retrieved evidence
+      description: Extends the existing conversation API. The server performs per-conversation memory pruning, broad retrieval, reranking to at most four chunks, evidence validation, generation at temperature zero, citations and cost logging.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 20000
+                idempotencyKey:
+                  type: string
+      responses:
+        "200":
+          description: Existing stream response contains the validated assistant answer and source citations
+        "401":
+          description: User session required
+        "404":
+          description: Conversation not found for current owner
+        "422":
+          description: Message validation failed
+        "503":
+          description: Model or search provider unavailable; retryable error preserves user message
+components:
+  securitySchemes:
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: milo_admin_session
+  parameters:
+    sourceId:
+      in: path
+      name: sourceId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Unauthorized:
+      description: Valid admin session required
+  schemas:
+    KnowledgeSource:
+      type: object
+      required: [id, originalName, byteSize, status, activeVersion, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        originalName:
+          type: string
+        byteSize:
+          type: integer
+        status:
+          type: string
+          enum: [processing, ready, failed, replacing]
+        activeVersion:
+          type: integer
+        errorCategory:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    UsageEvent:
+      type: object
+      required: [id, operation, modelName, inputTokens, outputTokens, durationMs, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        operation:
+          type: string
+          enum: [answer, summarize, embed, rerank]
+        modelName:
+          type: string
+        inputTokens:
+          type: integer
+        outputTokens:
+          type: integer
+        estimated:
+          type: boolean
+        costAmount:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+        durationMs:
+          type: integer
+        status:
+          type: string
+          enum: [completed, failed]
+        createdAt:
+          type: string
+          format: date-time

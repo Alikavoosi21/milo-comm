@@ -1,18 +1,35 @@
+# Dependencies and generated output
 node_modules/
 .next/
+out/
 dist/
 build/
 coverage/
 playwright-report/
 test-results/
-.env*
-!.env.example
+*.tsbuildinfo
+
+# Local runtime data and uploaded documents
 .data/
-*.log
-*.tmp
-.DS_Store
-Thumbs.db
+uploads/
+storage/
+
+# Secrets and local environment configuration
+.env
+.env.*
+
+# Editor and operating-system files
 .vscode/
 .idea/
-*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+# Local artifacts, screenshots, logs and archives
+*.log
+*.tmp
+*.zip
+*.png
+*.jpg
+*.jpeg
+*.webp
 tmp-home.png
