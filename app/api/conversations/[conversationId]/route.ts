@@ -21,6 +21,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ conve
   const { conversationId } = await context.params;
   const result = patchConversation(ownerId, conversationId, parsed.data);
   if (result.status === "not_found") return Response.json({ error: "گفتگو پیدا نشد" }, { status: 404 });
+  if (result.status === "invalid_project") return Response.json({ error: "پروژه پیدا نشد" }, { status: 404 });
   if (result.status === "conflict") {
     return Response.json({
       error: result.conversation.lifecycleState === "deleting" ? "گفتگو در حال حذف است" : "گفتگو در جای دیگری تغییر کرده است؛ نسخه تازه را بررسی کنید.",
@@ -30,7 +31,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ conve
 
   logEvent("conversation.patch", {
     conversationId,
-    fields: [parsed.data.title !== undefined ? "title" : "", parsed.data.instructions !== undefined ? "instructions" : ""].filter(Boolean).join(","),
+    fields: Object.keys(parsed.data).filter((key) => key !== "expectedRevision").join(","),
     outcome: "updated",
     durationMs: Date.now() - startedAt,
   });

@@ -26,6 +26,7 @@ storage/
 Thumbs.db
 
 # Local artifacts, screenshots, logs and archives
+.scratch/
 *.log
 *.tmp
 *.zip

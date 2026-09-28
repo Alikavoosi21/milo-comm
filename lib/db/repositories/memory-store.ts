@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { Attachment, ChatBranch, ChatMessage, Conversation, ConversationMetadata, ContextSource } from "@/lib/types";
+import type { Attachment, ChatBranch, ChatMessage, ChatProject, Conversation, ConversationMetadata, ContextSource } from "@/lib/types";
 
 interface Store {
   conversations: Map<string, Conversation>;
+  projects: Map<string, ChatProject>;
   attachments: Map<string, Attachment>;
   snapshots: Map<string, ContextSource[]>;
   idempotency: Map<string, string>;
@@ -14,12 +15,16 @@ interface Store {
 export interface ConversationPatchInput {
   title?: string;
   instructions?: string;
+  projectId?: string | null;
+  icon?: string;
+  color?: string;
   expectedRevision: number;
 }
 
 export type ConversationPatchResult =
   | { status: "updated"; conversation: Conversation }
   | { status: "conflict"; conversation: Conversation }
+  | { status: "invalid_project" }
   | { status: "not_found" };
 
 const dataFile = path.resolve(process.cwd(), process.env.MILO_DATA_DIR ?? ".data", "store.json");
@@ -47,6 +52,7 @@ function loadStore(): Store | undefined {
     const value = JSON.parse(readFileSync(dataFile, "utf8"));
     return {
       conversations: new Map((value.conversations ?? []).map(([id, conversation]: [string, Conversation]) => [id, normalizeConversation(conversation)])),
+      projects: new Map(value.projects ?? []),
       attachments: new Map(value.attachments ?? []),
       snapshots: new Map(value.snapshots ?? []),
       idempotency: new Map(value.idempotency ?? []),
@@ -60,17 +66,21 @@ function loadStore(): Store | undefined {
 const globalStore = globalThis as typeof globalThis & { __miloStore?: Store };
 export const store: Store = (globalStore.__miloStore ??= loadStore() ?? {
   conversations: new Map(),
+  projects: new Map(),
   attachments: new Map(),
   snapshots: new Map(),
   idempotency: new Map(),
   themes: new Map(),
 });
+// Next.js development reloads modules while retaining the global store from the previous shape.
+store.projects ??= new Map();
 
 export function persistStore() {
   if (isTest) return;
   mkdirSync(path.dirname(dataFile), { recursive: true });
   writeFileSync(dataFile, JSON.stringify({
     conversations: [...store.conversations],
+    projects: [...store.projects],
     attachments: [...store.attachments],
     snapshots: [...store.snapshots],
     idempotency: [...store.idempotency],
@@ -82,6 +92,9 @@ export function conversationMetadata(conversation: Conversation): ConversationMe
   return {
     id: conversation.id,
     title: conversation.title,
+    projectId: conversation.projectId ?? null,
+    icon: conversation.icon ?? "message",
+    color: conversation.color ?? "#fb956c",
     instructions: conversation.instructions,
     revision: conversation.revision,
     updatedAt: conversation.updatedAt,
@@ -89,7 +102,7 @@ export function conversationMetadata(conversation: Conversation): ConversationMe
   };
 }
 
-export function createConversation(ownerId: string): Conversation {
+export function createConversation(ownerId: string, projectId: string | null = null): Conversation {
   const now = new Date().toISOString();
   const id = randomUUID();
   const branch: ChatBranch = { id: randomUUID(), conversationId: id, label: "مسیر اصلی", createdAt: now };
@@ -97,6 +110,9 @@ export function createConversation(ownerId: string): Conversation {
     id,
     ownerId,
     title: "گفتگوی جدید",
+    projectId,
+    icon: "message",
+    color: "#fb956c",
     instructions: "",
     revision: 1,
     updatedAt: now,
@@ -129,9 +145,13 @@ export function patchConversation(ownerId: string, id: string, input: Conversati
   if (conversation.lifecycleState !== "active" || conversation.revision !== input.expectedRevision) {
     return { status: "conflict", conversation };
   }
+  if (input.projectId && (!store.projects.has(input.projectId) || store.projects.get(input.projectId)?.ownerId !== ownerId)) return { status: "invalid_project" };
 
   if (input.title !== undefined) conversation.title = input.title.trim();
   if (input.instructions !== undefined) conversation.instructions = input.instructions.trim();
+  if (input.projectId !== undefined) conversation.projectId = input.projectId;
+  if (input.icon !== undefined) conversation.icon = input.icon;
+  if (input.color !== undefined) conversation.color = input.color;
   conversation.revision += 1;
   conversation.updatedAt = new Date().toISOString();
   persistStore();
@@ -170,6 +190,7 @@ export function activeMessages(conversation: Conversation, branchId = conversati
 
 export function resetStore() {
   store.conversations.clear();
+  store.projects.clear();
   store.attachments.clear();
   store.snapshots.clear();
   store.idempotency.clear();

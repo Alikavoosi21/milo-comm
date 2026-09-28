@@ -1,2 +1,2 @@
-import { redirect } from "next/navigation";
-export default function OldUsagePage() { redirect("/admin/chunking"); }
+import { AdminDashboard } from "@/components/admin/admin-dashboard";
+export default function AdminUsagePage() { return <AdminDashboard view="usage" />; }

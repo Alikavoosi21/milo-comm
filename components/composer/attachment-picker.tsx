@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 type PublicSource = { id: string; name: string };
 
-export function AttachmentPicker({ onUploaded, onError, disabled }: { onUploaded(value: { id: string; originalName: string }): void; onError(message: string): void; disabled?: boolean }) {
+export function AttachmentPicker({ onUploaded, onError, onUploadingChange, disabled }: { onUploaded(value: { id: string; originalName: string }): void; onError(message: string): void; onUploadingChange?(uploading: boolean): void; disabled?: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   const control = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -48,6 +48,7 @@ export function AttachmentPicker({ onUploaded, onError, disabled }: { onUploaded
   async function select(files: FileList | null) {
     const file = files?.[0]; if (!file) return;
     if (file.size > 10 * 1024 * 1024) { onError(`فایل «${file.name}» بیشتر از ۱۰ مگابایت است. فرمت‌های مجاز: PDF، DOCX، TXT، MD و CSV.`); return; }
+    onUploadingChange?.(true);
     const form = new FormData(); form.set("file", file);
     try {
       const response = await fetch("/api/attachments", { method: "POST", body: form });
@@ -58,11 +59,13 @@ export function AttachmentPicker({ onUploaded, onError, disabled }: { onUploaded
       if (input.current) input.current.value = "";
     } catch {
       onError(`بارگذاری فایل «${file.name}» انجام نشد. دوباره تلاش کنید.`);
+    } finally {
+      onUploadingChange?.(false);
     }
   }
 
   return <div className="attachment-control" ref={control}>
-    <button type="button" className="composer-tool" title="منابع و افزودن فایل" aria-label="نمایش منابع و افزودن فایل" aria-expanded={open} aria-controls="composer-source-popover" onClick={() => void showSources()}>⌕</button>
+    <button type="button" className="composer-tool" title="منابع و افزودن فایل" aria-label="نمایش منابع و افزودن فایل" aria-expanded={open} aria-controls="composer-source-popover" onClick={() => void showSources()}><span aria-hidden="true">＋</span><span>پیوست و منابع</span></button>
     {open && <div id="composer-source-popover" className="source-popover" role="dialog" aria-label="منابع دانش">
       <strong>منابع دانش</strong>
       <small>پاسخ‌های محتوایی فقط بر اساس این منابع ساخته می‌شوند.</small>

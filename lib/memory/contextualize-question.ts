@@ -2,15 +2,24 @@ import { env } from "@/lib/validation/env";
 import { estimateTokens, recordUsage } from "@/lib/observability/usage";
 import { askGroundedModel } from "@/lib/rag/chat-model";
 import type { ActiveMemory } from "./summary-service";
+import { isMemoryRecallQuestion } from "./short-memory";
+import { socialReply } from "@/lib/rag/social-intent";
 
-const referenceWords = /(?:^|[\s،؛])(?:این|آن|همان|ایشان|او|آنها|آن‌ها|اینا|اینها|این‌ها|قبلی|موردش|خودش)(?=$|[\s؟?،؛])/u;
-const referencePhrases = /(?:درباره[‌\s]?(?:اش|ش)|در[‌\s]?موردش|راجع[‌\s]?بهش|(?:به|از|با|برا|برای|تو|توی|داخل|درون|روی|زیر|بالا|پایین|پشت|کنار|بخش|قسمت|فیلد|اطلاعات|موارد|مشخصات)(?:ش|اش)(?=$|[\s؟?،؛])|همین|همون|بیشتر[‌\s]بگو|ادامه[‌\s]بده|توضیح[‌\s]بده)/u;
-const shortFollowUp = /^(?:چرا|چطور|چگونه|یعنی|مثال|نتیجه|بعدش|چه[‌\s]شد|بیشتر)(?:[\s؟?]|$)/u;
+const referenceWords = /(?:^|[\s،؛])(?:این|آن|اون|همان|همون|ایشان|او|آنها|آن‌ها|اینا|اینها|این‌ها|قبلی|موردش|خودش)(?=$|[\s؟?،؛])/u;
+const referencePhrases = /(?:درباره[‌\s]?(?:اش|ش)|در[‌\s]?موردش|راجع[‌\s]?بهش|(?:به|از|با|برا|برای|تو|توی|داخل|درون|روی|زیر|بالا|پایین|پشت|کنار|بخش|قسمت|فیلد|اطلاعات|موارد|مشخصات)(?:ش|اش)(?=$|[\s؟?،؛])|همین|همون|بیشتر[‌\s]بگو|بیشتر[‌\s]توضیح[‌\s]بده|ادامه[‌\s]بده|توضیح[‌\s]بده)/u;
+const shortFollowUp = /^(?:چرا|چطور|چگونه|یعنی|مثال|نتیجه|بعدش|حالا[‌\s]چی|چه[‌\s]شد|بیشتر)(?:[\s؟?]|$)/u;
+const possessiveFollowUp = /(?:^|[\s،؛])([\p{L}]{3,}(?:ش|اش))(?=$|[\s؟?،؛])/gu;
+const plainWordsEndingInSh = new Set(["گزارش", "پوشش", "روش", "ارزش", "دانش", "نقش", "نمایش", "کوشش", "پاداش"]);
+
+function hasPossessiveReference(question: string) {
+  return [...question.matchAll(possessiveFollowUp)]
+    .some((match) => !plainWordsEndingInSh.has(match[1]));
+}
 
 export function isContextualFollowUp(question: string) {
   const normalized = question.normalize("NFKC").trim();
   return referenceWords.test(normalized) || referencePhrases.test(normalized)
-    || (normalized.length <= 90 && shortFollowUp.test(normalized));
+    || (normalized.length <= 90 && (shortFollowUp.test(normalized) || hasPossessiveReference(normalized)));
 }
 
 export function referencedSourceIds(question: string, memory: ActiveMemory): string[] {
@@ -19,7 +28,8 @@ export function referencedSourceIds(question: string, memory: ActiveMemory): str
   if (recent.at(-1)?.role === "user" && recent.at(-1)?.content.trim() === question.trim()) recent.pop();
   for (let index = recent.length - 1; index >= 0; index--) {
     const item = recent[index];
-    if (item.role === "user" && !isContextualFollowUp(item.content)) break;
+    if (item.role === "user" && !isContextualFollowUp(item.content)
+      && !isMemoryRecallQuestion(item.content) && !socialReply(item.content)) break;
     if (item.role !== "assistant" || !item.citations?.length) continue;
     return [...new Set(item.citations
       .map((citation) => citation.sourceId)
@@ -36,7 +46,8 @@ export function preferContextualQuestion(question: string, candidate: string, fa
 export async function contextualizeQuestion(question: string, memory: ActiveMemory, requestId: string) {
   const recent = [...memory.recent];
   if (recent.at(-1)?.role === "user" && recent.at(-1)?.content.trim() === question.trim()) recent.pop();
-  const previousUser = recent.filter((item) => item.role === "user" && !isContextualFollowUp(item.content)).at(-1)?.content.trim()
+  const previousUser = recent.filter((item) => item.role === "user" && !isContextualFollowUp(item.content)
+    && !isMemoryRecallQuestion(item.content) && !socialReply(item.content)).at(-1)?.content.trim()
     ?? recent.filter((item) => item.role === "user").at(-1)?.content.trim() ?? "";
   const summary = memory.summary.trim();
   if (!isContextualFollowUp(question) || (!previousUser && !summary)) return question;
@@ -47,7 +58,7 @@ export async function contextualizeQuestion(question: string, memory: ActiveMemo
     && item.citations?.some((citation) => sourceIds.includes(citation.sourceId)))?.content.trim() ?? "";
   const fallbackContext = [previousUser || summary.slice(-700), previousAnswer.slice(0, 300)].filter(Boolean).join("\n");
   const fallback = `${fallbackContext.slice(-700)}\n${question}`;
-  if (env.MOCK_AI === "true" || sourceIds.length > 0) {
+  if (env.MOCK_AI === "true") {
     await recordUsage({ requestId, operation: "rewrite", modelName: "local-context", providerName: "local",
       inputTokens: estimateTokens(fallback), outputTokens: 0, estimated: false,
       durationMs: 0, status: "completed", errorCategory: null });

@@ -31,8 +31,8 @@ export function forkMessage(ownerId: string, messageId: string, content: string)
       content,
       status: "completed",
       parentMessageId: original.parentMessageId,
-      attachmentIds: [],
-      referenceConversationIds: [],
+      attachmentIds: [...original.attachmentIds],
+      referenceConversationIds: [...original.referenceConversationIds],
       branchId: branch.id,
     }),
   };

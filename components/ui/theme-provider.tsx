@@ -13,7 +13,7 @@ const ThemeContext = createContext<ThemeContextValue>({ theme: "light", status: 
 function preferredTheme(): Theme {
   const saved = localStorage.getItem("milo-theme");
   if (saved === "light" || saved === "dark") return saved;
-  return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return "dark";
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -23,7 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const saved = localStorage.getItem("milo-theme");
     const initial = preferredTheme();
-    document.documentElement.dataset.theme = initial;
+    document.documentElement.dataset.theme = initial; document.documentElement.classList.toggle("dark", initial === "dark");
     queueMicrotask(() => setTheme(initial));
     if (saved) return;
     fetch("/api/preferences")
@@ -31,7 +31,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       .then((value) => {
         if (value.theme === "light" || value.theme === "dark") {
           setTheme(value.theme);
-          document.documentElement.dataset.theme = value.theme;
+          document.documentElement.dataset.theme = value.theme; document.documentElement.classList.toggle("dark", value.theme === "dark");
         }
       })
       .catch(() => {});
@@ -43,7 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(next);
     setStatus("در حال ذخیره تنظیمات…");
     localStorage.setItem("milo-theme", next);
-    document.documentElement.dataset.theme = next;
+    document.documentElement.dataset.theme = next; document.documentElement.classList.toggle("dark", next === "dark");
     try {
       const response = await fetch("/api/preferences", {
         method: "PUT",
@@ -55,7 +55,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setTheme(previous);
       localStorage.setItem("milo-theme", previous);
-      document.documentElement.dataset.theme = previous;
+      document.documentElement.dataset.theme = previous; document.documentElement.classList.toggle("dark", previous === "dark");
       setStatus("ذخیره تنظیمات انجام نشد؛ دوباره تلاش کنید.");
     }
   }

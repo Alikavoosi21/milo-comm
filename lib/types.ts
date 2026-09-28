@@ -16,6 +16,9 @@ export interface Conversation {
   id: string;
   ownerId: string;
   title: string;
+  projectId?: string | null;
+  icon?: string;
+  color?: string;
   instructions: string;
   revision: number;
   updatedAt: string;
@@ -32,10 +35,14 @@ export interface Conversation {
 export interface ConversationMetadata {
   id: string;
   title: string;
+  projectId?: string | null;
+  icon?: string;
+  color?: string;
   instructions: string;
   revision: number;
   updatedAt: string;
   lastActivityAt: string;
 }
+export interface ChatProject { id: string; ownerId: string; title: string; icon: string; color: string; parentProjectId?: string | null; createdAt: string; updatedAt: string }
 export interface Attachment { id: string; ownerId: string; originalName: string; declaredType: string; detectedType?: string; byteSize: number; status: AttachmentState; extractedText?: string; error?: string; storageKey: string }
 export interface ContextSource { type: "conversation" | "attachment"; id: string; label: string; content: string }

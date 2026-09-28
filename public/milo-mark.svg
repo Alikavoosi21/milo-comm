@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="نشان مایلو">
+  <rect width="256" height="256" rx="58" fill="#F7F3EB"/>
+  <path d="M70 79h59" stroke="#DD5F3B" stroke-width="22" stroke-linecap="round"/>
+  <path d="M70 118h82" stroke="#DD5F3B" stroke-width="22" stroke-linecap="round"/>
+  <path d="M70 157h45c11 0 14 25 43 31 20 4 36-5 45-21" fill="none" stroke="#DD5F3B" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="177" cy="76" r="11" fill="#293731"/>
+</svg>

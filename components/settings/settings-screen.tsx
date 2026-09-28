@@ -16,6 +16,7 @@ export function SettingsScreen() {
       </section>
       <section className="settings-card" aria-labelledby="assistant-title">
         <div><h2 id="assistant-title">دستیار هوش مصنوعی</h2><p>پاسخ‌ها توسط مدل تنظیم‌شده برای MILO COMM تولید می‌شوند. نام مدل و سرویس، اصطلاح فنی محسوب می‌شوند.</p></div>
+        <p>حافظهٔ کوتاه‌مدت، پیام‌های همین گفتگو را برای فهم پرسش‌های پیگیری نگه می‌دارد. در گفتگوهای طولانی، بخش قدیمی‌تر خلاصه می‌شود؛ گفتگوهای دیگر وارد این حافظه نمی‌شوند.</p>
       </section>
     </div>
   </main>;

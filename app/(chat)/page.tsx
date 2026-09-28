@@ -2,15 +2,42 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ArrowUp, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { BrandMark } from "@/components/brand/brand-mark";
 
 const prompts = [
-  ["خلاصهٔ منابع", "دربارهٔ فایل‌های ثبت‌شدهٔ مدیر یک جمع‌بندی بخواهید."],
-  ["پرسش مستند", "دربارهٔ موضوع منبع بپرسید و ارجاع پاسخ را ببینید."],
-  ["دامنهٔ پاسخ", "مدیر تعیین می‌کند پاسخ از فایل‌ها، وب یا هر دو ساخته شود."],
+  { title: "پرسش از منابع", text: "مهم‌ترین نکات منابع ثبت‌شده چیست؟" },
+  { title: "خلاصه‌سازی", text: "از محتوای منابع دانش یک خلاصهٔ کوتاه تهیه کن." },
+  { title: "بررسی دقیق", text: "برای پاسخ به پرسشم از کدام منبع استفاده کردی؟" },
 ];
 
 export default function HomePage() {
-  const router = useRouter(); const [busy, setBusy] = useState(false);
-  async function create() { setBusy(true); const value = await fetch("/api/conversations", { method: "POST" }).then((r) => r.json()); router.push(`/chat/${value.id}`); }
-  return <main className="welcome-main"><div className="welcome-content"><div className="hero-mark">م</div><span className="eyebrow">دستیار فارسی و آگاه به گفتگو</span><h1>بیایید یک گفتگوی هوشمند را شروع کنیم</h1><p>مایلو پرسش‌ها را با سیاست انتخاب‌شدهٔ مدیر پاسخ می‌دهد. با نشانهٔ کتاب در چت می‌توانید منابع فعال را ببینید.</p><button className="welcome-cta" onClick={create} disabled={busy}>{busy ? "در حال ساخت گفتگو…" : "شروع گفتگوی جدید ←"}</button><div className="prompt-grid">{prompts.map(([title, description]) => <article key={title}><span>✦</span><strong>{title}</strong><p>{description}</p></article>)}</div></div></main>;
+  const router = useRouter();
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function create() {
+    if (busy) return;
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/conversations", { method: "POST" });
+      if (!response.ok) throw new Error();
+      const value: { id: string } = await response.json();
+      if (draft.trim()) sessionStorage.setItem(`milo:draft:${value.id}`, draft.trim());
+      router.push(`/chat/${value.id}`);
+      router.refresh();
+    } catch { setError("شروع گفتگو انجام نشد؛ دوباره تلاش کنید."); setBusy(false); }
+  }
+
+  return <main className="welcome-main home-workspace"><div className="welcome-content">
+    <div className="home-identity"><BrandMark className="hero-mark" /><span>دستیار فارسی مایلو</span></div>
+    <h1>از کجا شروع کنیم؟</h1>
+    <p>پرسش خود را بنویسید. پاسخ‌های مستند بر اساس سیاست منابعی که مدیر تعیین کرده ساخته می‌شوند.</p>
+    <div className="home-composer"><Textarea value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void create(); } }} placeholder="پرسش خود را بنویسید…" aria-label="پرسش تازه" /><div><small>پیش از ارسال می‌توانید متن را ویرایش کنید.</small><Button type="button" onClick={() => void create()} disabled={busy}><ArrowUp size={16} aria-hidden="true" />{busy ? "در حال شروع…" : "شروع گفتگو"}</Button></div></div>
+    {error && <p role="alert" className="chat-error">{error}</p>}
+    <div className="home-suggestions" aria-label="پیشنهادهای شروع">{prompts.map((item) => <button key={item.title} type="button" onClick={() => setDraft(item.text)}><Sparkles size={16} aria-hidden="true" /><strong>{item.title}</strong><span>{item.text}</span></button>)}</div>
+  </div></main>;
 }

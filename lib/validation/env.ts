@@ -7,7 +7,7 @@ const schema = z.object({
   AI_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(30_000),
   MOCK_AI: z.enum(["true", "false"]).default("true"),
   RAG_STORAGE_MODE: z.enum(["local", "pgvector"]).optional(),
-  DATABASE_URL: z.string().default("postgres://postgres:postgres@localhost:5432/milo_comm"),
+  DATABASE_URL: z.string().default(""),
   STORAGE_DIR: z.string().default(".data/uploads"),
   EMBEDDING_BASE_URL: z.string().default(""),
   EMBEDDING_API_KEY: z.string().default(""),
@@ -33,4 +33,7 @@ const schema = z.object({
 
 export const env = schema.parse(process.env);
 export const ragStorageMode = env.RAG_STORAGE_MODE ?? (env.MOCK_AI === "true" ? "local" : "pgvector");
+if (ragStorageMode === "pgvector" && !env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is required when RAG_STORAGE_MODE=pgvector.");
+}
 
